@@ -1,7 +1,7 @@
 //! This example demonstrates an HTTP client that requests files from a server.
 //!
 //! Checkout the `README.md` for guidance.
-
+use client::stats_collection::*;
 use quinn::ClientConfig;
 use {
     client::{
@@ -100,10 +100,28 @@ async fn run_endpoint(
     let connection = endpoint.connect(target, "connect")?.await?;
     info!("connected task `{task_id}` at {:?}", start.elapsed());
 
+    let mut stats_collector: StatsCollection = StatsCollection::new();
+    let mut epoch_time: u64 = 0;
+
+    println!("connection.stats():{:?}", connection.stats());
+
     let start = Instant::now();
     let mut transaction_id = 0;
     let mut tx_buffer = [0u8; PACKET_DATA_SIZE];
     loop {
+        let con_stats = connection.stats();
+        epoch_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let stats = StatsSample {
+            tps: None,
+            udp_tx: con_stats.udp_tx.bytes,
+            udp_rx: con_stats.udp_rx.bytes,
+            time_stamp: epoch_time,
+        };
+        stats_collector.push(stats);
+
         if let Some(duration) = duration {
             if start.elapsed() >= duration {
                 info!("Transaction generator for task `{task_id}` is stopping...");
@@ -126,6 +144,7 @@ async fn run_endpoint(
     // Sleep to give it some time to deliver all the pending streams.
     sleep(Duration::from_secs(1)).await;
     let connection_stats = connection.stats();
+    println!("connection.stats():{:?}", connection_stats);
     info!("Connection stats for task `{task_id}`: {connection_stats:?}");
     connection.close(0u32.into(), b"done");
 
