@@ -56,8 +56,8 @@ pub struct ClientCliParameters {
 }
 
 fn parse_duration(s: &str) -> Result<Duration, &'static str> {
-    s.parse::<u64>()
-        .map(Duration::from_secs)
+    s.parse::<f64>()
+        .map(Duration::from_secs_f64)
         .map_err(|_| "failed to parse duration")
 }
 
