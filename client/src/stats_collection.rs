@@ -8,8 +8,7 @@
 // RETIRE_CONNECTION_ID: 0, STREAM_DATA_BLOCKED: 0, STREAMS_BLOCKED_BIDI: 0, STREAMS_BLOCKED_UNI: 0, STOP_SENDING: 0, STREAM: 0 },
 // path: PathStats { rtt: 3.461059ms, cwnd: 12000, congestion_events: 0, lost_packets: 0, lost_bytes: 0, sent_packets: 4, sent_plpmtud_probes: 1,
 // lost_plpmtud_probes: 0, black_holes_detected: 0, current_mtu: 1200 } }
-use std::fs::File;
-
+use std::io::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub struct StatsSample {
     pub udp_tx: u64,
@@ -31,7 +30,9 @@ impl StatsCollection {
 
     pub fn write_csv(&self, host: String) {
         let file_name = format!("{}-host.csv", host);
-        let file = File::create(file_name).unwrap();
+        let mut path = std::path::PathBuf::from("results");
+        path.push(file_name);
+        let file = std::fs::File::create(path).unwrap();
         let mut csv_writer = csv::Writer::from_writer(file);
         csv_writer
             .write_record(&["udp_tx", "udp_rx", "time_stamp"])

@@ -3,7 +3,7 @@
 //! Checkout the `README.md` for guidance.
 use std::io::Write as _;
 
-use client::stats_collection::{self, *};
+use client::stats_collection::*;
 use quinn::ClientConfig;
 use {
     client::{
@@ -58,9 +58,13 @@ async fn run(parameters: ClientCliParameters) -> Result<(), QuicClientError> {
             Arc::new(QuicClientCertificate::default())
         };
     let client_config = create_client_config(client_certificate, parameters.disable_congestion);
-
+    let host_name = parameters.host_name.clone();
     match run_endpoint(client_config, parameters).await {
-        Ok(_) => println!("Task completed successfully"),
+        Ok(collection) => {
+            if let Some(host_name) = host_name {
+                collection.write_csv(host_name);
+            }
+        }
         Err(e) => println!("{e}"),
     }
 
@@ -79,7 +83,7 @@ async fn run_endpoint(
         num_connections,
         ..
     }: ClientCliParameters,
-) -> Result<(), QuicClientError> {
+) -> Result<StatsCollection, QuicClientError> {
     let endpoint =
         create_client_endpoint(bind, client_config).expect("Endpoint creation should not fail.");
 
@@ -127,18 +131,18 @@ async fn run_endpoint(
     // When the connection is closed all the streams that haven't been delivered yet will be lost.
     // Sleep to give it some time to deliver all the pending streams.
     sleep(Duration::from_secs(1)).await;
-    stats_collector.write_csv("A".into());
-    let connection_stats = connection.stats();
+
+    /*let connection_stats = connection.stats();
     for stat in stats_collector {
         print!("{:?}\n", stat);
-    }
+    }*/
     println!("TRANSACTIONS_SENT {}", transaction_id);
-    info!("Connection stats for task: {connection_stats:?}");
+    //info!("Connection stats for task: {connection_stats:?}");
     connection.close(0u32.into(), b"done");
 
     // Give the server a fair chance to receive the close packet
     endpoint.wait_idle().await;
-    Ok(())
+    Ok(stats_collector)
 }
 
 /// return timestamp as ms
