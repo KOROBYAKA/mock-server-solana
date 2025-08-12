@@ -8,7 +8,7 @@
 // RETIRE_CONNECTION_ID: 0, STREAM_DATA_BLOCKED: 0, STREAMS_BLOCKED_BIDI: 0, STREAMS_BLOCKED_UNI: 0, STOP_SENDING: 0, STREAM: 0 },
 // path: PathStats { rtt: 3.461059ms, cwnd: 12000, congestion_events: 0, lost_packets: 0, lost_bytes: 0, sent_packets: 4, sent_plpmtud_probes: 1,
 // lost_plpmtud_probes: 0, black_holes_detected: 0, current_mtu: 1200 } }
-use std::io::prelude::*;
+
 #[derive(Clone, Copy, Debug)]
 pub struct StatsSample {
     pub udp_tx: u64,
@@ -53,4 +53,11 @@ impl IntoIterator for StatsCollection {
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
+}
+
+pub fn file_bin(host: String) -> Option<std::io::BufWriter<std::fs::File>> {
+    let file_name = format!("{}-host_transactions.bin", host);
+    let file = std::fs::File::create(file_name).unwrap();
+    let file = std::io::BufWriter::with_capacity(10 * 1024, file);
+    Some(file)
 }

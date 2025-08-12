@@ -1,12 +1,8 @@
 //! This example demonstrates quic server for handling incoming transactions.
 //!
 //! Checkout the `README.md` for guidance.
-
-use {
-    quinn::{Chunk, Connection, ConnectionError, Endpoint, IdleTimeout, ServerConfig},
-    quinn_proto::crypto::rustls::QuicServerConfig,
-};
-
+use shared::stats_collection::{file_bin, StatsCollection, StatsSample};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use {
     chrono::Utc,
     pem::Pem,
@@ -43,6 +39,10 @@ use {
     },
     tokio_util::sync::CancellationToken,
     tracing::{debug, error, info, info_span, trace, warn},
+};
+use {
+    quinn::{Chunk, Connection, ConnectionError, Endpoint, IdleTimeout, ServerConfig},
+    quinn_proto::crypto::rustls::QuicServerConfig,
 };
 
 /// Returns default server configuration along with its PEM certificate chain.
@@ -184,6 +184,7 @@ impl Stats {
 async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
     let token = CancellationToken::new();
     let stats = Arc::new(Stats::default());
+    let (sender, receiver): (Sender<u32>, Receiver<u32>) = channel();
     // Spawn a task that listens for SIGINT (Ctrl+C)
     let handler = tokio::spawn({
         let token = token.clone();
@@ -203,6 +204,7 @@ async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
         stream_receive_window_size,
         receive_window_size,
         reordering_log_file,
+        log,
     } = options;
 
     let identity = Keypair::new();
@@ -286,6 +288,7 @@ async fn handle_connection(
     reordering_log_file: Option<String>,
     stats: Arc<Stats>,
     token: CancellationToken,
+    //thread_sender: Sender<u32>,
 ) -> Result<(), QuicServerError> {
     async {
         let span = info_span!(
@@ -310,6 +313,7 @@ async fn handle_connection(
 
         // Each stream initiated by the client constitutes a new request.
         loop {
+            println!("{:?}", stats.clone());
             if token.is_cancelled() {
                 info!("Stop handling connection...");
                 return Ok(());
@@ -359,6 +363,8 @@ async fn handle_connection(
                 }
 
                 stats.num_received_streams.fetch_add(1, Ordering::Relaxed);
+                //let dt = start.elapsed().as_micros() as u32;
+                //thread_sender.send(dt);
             }
             //}
             //});

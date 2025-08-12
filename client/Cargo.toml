@@ -28,3 +28,4 @@ tracing-futures = { workspace = true }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
 csv = "1.1"
+shared = { path = "../shared" }

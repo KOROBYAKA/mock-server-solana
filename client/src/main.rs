@@ -1,10 +1,10 @@
 //! This example demonstrates an HTTP client that requests files from a server.
 //!
 //! Checkout the `README.md` for guidance.
-use std::io::Write as _;
 
-use client::stats_collection::*;
 use quinn::ClientConfig;
+use shared::stats_collection::{file_bin, StatsCollection, StatsSample};
+use std::io::Write as _;
 use {
     client::{
         cli::{build_cli_parameters, ClientCliParameters},
@@ -59,7 +59,7 @@ async fn run(parameters: ClientCliParameters) -> Result<(), QuicClientError> {
         };
     let client_config = create_client_config(client_certificate, parameters.disable_congestion);
     let host_name = parameters.host_name.clone();
-    match run_endpoint(client_config, parameters).await {
+    match run_endpoint(client_config, parameters, Some(&host_name.clone().unwrap())).await {
         Ok(collection) => {
             if let Some(host_name) = host_name {
                 collection.write_csv(host_name);
@@ -83,6 +83,7 @@ async fn run_endpoint(
         num_connections,
         ..
     }: ClientCliParameters,
+    host_name: Option<&String>,
 ) -> Result<StatsCollection, QuicClientError> {
     let endpoint =
         create_client_endpoint(bind, client_config).expect("Endpoint creation should not fail.");
@@ -93,8 +94,10 @@ async fn run_endpoint(
     let mut stats_dt: u64;
 
     println!("connection.stats():{:?}", connection.stats());
-    let file = std::fs::File::create("blabla.bin").unwrap();
-    let mut file = std::io::BufWriter::with_capacity(10 * 1024, file);
+    let mut file_b: Option<std::io::BufWriter<std::fs::File>> = None;
+    if let Some(host_name) = host_name {
+        file_b = file_bin(host_name.into());
+    }
     let start = Instant::now();
     let mut transaction_id = 0;
     let mut tx_buffer = [0u8; PACKET_DATA_SIZE];
@@ -125,7 +128,9 @@ async fn run_endpoint(
         let _ = send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize]).await;
         transaction_id += 1;
         let dt = start.elapsed().as_micros() as u32;
-        file.write(&dt.to_ne_bytes()).unwrap();
+        if let Some(writer) = file_b.as_mut() {
+            writer.write_all(&dt.to_ne_bytes()).unwrap();
+        }
     }
 
     // When the connection is closed all the streams that haven't been delivered yet will be lost.
