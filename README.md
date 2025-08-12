@@ -7,7 +7,7 @@ The `server` and `client` demonstrate how agave client/server works with quic-ba
 To model current server with relevant parameters:
 
 ```shell
-$ RUST_LOG=info ./server --listen 0.0.0.0:8009 --receive-window-size 630784  --max_concurrent_streams 512 --stream-receive-window-size 1232
+$ RUST_LOG=info ./server --listen 0.0.0.0:8009 --receive-window-size 630784  --max-concurrent-streams 512 --stream-receive-window-size 1232
 ```
 
 Server has an option to write reorder log in the csv file (see `--write_reordering_log`).
