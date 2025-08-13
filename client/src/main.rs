@@ -38,7 +38,7 @@ fn main() {
     let opt = build_cli_parameters();
     let code = {
         if let Err(e) = run(opt) {
-            eprintln!("ERROR: {e}");
+            println!("ERROR: {e}");
             1
         } else {
             0
@@ -58,10 +58,13 @@ async fn run(parameters: ClientCliParameters) -> Result<(), QuicClientError> {
             Arc::new(QuicClientCertificate::default())
         };
     let client_config = create_client_config(client_certificate, parameters.disable_congestion);
-    let host_name = parameters.host_name.clone();
-    match run_endpoint(client_config, parameters, Some(&host_name.clone().unwrap())).await {
+    let result = match parameters.host_name.clone() {
+        Some(host_name) => run_endpoint(client_config, parameters.clone(), Some(&host_name)).await,
+        None => run_endpoint(client_config, parameters.clone(), None).await,
+    };
+    match result {
         Ok(collection) => {
-            if let Some(host_name) = host_name {
+            if let Some(host_name) = parameters.host_name.clone() {
                 collection.write_csv(host_name);
             }
         }
@@ -128,8 +131,11 @@ async fn run_endpoint(
         let _ = send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize]).await;
         transaction_id += 1;
         let dt = start.elapsed().as_micros() as u32;
-        if let Some(writer) = file_b.as_mut() {
-            writer.write_all(&dt.to_ne_bytes()).unwrap();
+        match file_b.as_mut() {
+            Some(writer) => {
+                writer.write_all(&dt.to_ne_bytes()).unwrap();
+            }
+            None => {}
         }
     }
 

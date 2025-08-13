@@ -183,6 +183,7 @@ impl Stats {
 #[tokio::main]
 async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
     let token = CancellationToken::new();
+    let start = Instant::now();
     let stats = Arc::new(Stats::default());
     let (sender, receiver): (Sender<u32>, Receiver<u32>) = channel();
     // Spawn a task that listens for SIGINT (Ctrl+C)
@@ -246,7 +247,7 @@ async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
                         .num_accepted_connections
                         .fetch_add(1, Ordering::Relaxed);
                     let connection = conn.await?;
-                    let fut = handle_connection(connection, reordering_log_file.clone(), stats.clone(), token.clone());
+                    let fut = handle_connection(connection, reordering_log_file.clone(), stats.clone(), token.clone(), sender.clone(), start.clone());
                     tokio::spawn(async move {
                         if let Err(e) = fut.await {
                             error!("connection failed: {reason}", reason = e.to_string())
@@ -258,6 +259,7 @@ async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
     }
 
     let _ = handler.await;
+    println!("{:?}", receiver.recv().unwrap());
     Ok(())
 }
 
@@ -288,7 +290,8 @@ async fn handle_connection(
     reordering_log_file: Option<String>,
     stats: Arc<Stats>,
     token: CancellationToken,
-    //thread_sender: Sender<u32>,
+    thread_sender: Sender<u32>,
+    start: Instant,
 ) -> Result<(), QuicServerError> {
     async {
         let span = info_span!(
@@ -313,7 +316,6 @@ async fn handle_connection(
 
         // Each stream initiated by the client constitutes a new request.
         loop {
-            println!("{:?}", stats.clone());
             if token.is_cancelled() {
                 info!("Stop handling connection...");
                 return Ok(());
@@ -363,8 +365,8 @@ async fn handle_connection(
                 }
 
                 stats.num_received_streams.fetch_add(1, Ordering::Relaxed);
-                //let dt = start.elapsed().as_micros() as u32;
-                //thread_sender.send(dt);
+                let dt = start.elapsed().as_micros() as u32;
+                let _ = thread_sender.send(dt);
             }
             //}
             //});
