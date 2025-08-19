@@ -1,7 +1,7 @@
 //! This example demonstrates quic server for handling incoming transactions.
 //!
 //! Checkout the `README.md` for guidance.
-use shared::stats_collection::{file_bin, StatsCollection, StatsSample};
+use shared::stats_collection::{StatsCollection, StatsSample};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use {
     chrono::Utc,

@@ -104,6 +104,7 @@ async fn run_endpoint(
     let start = Instant::now();
     let mut transaction_id = 0;
     let mut tx_buffer = [0u8; PACKET_DATA_SIZE];
+    let mut stat_buff: Vec<u32> = Vec::new();
     loop {
         let con_stats = connection.stats();
         stats_dt = start.elapsed().as_micros() as u64;
@@ -128,6 +129,7 @@ async fn run_endpoint(
         }
 
         generate_dummy_data(&mut tx_buffer, transaction_id, timestamp(), tx_size);
+<<<<<<< HEAD
         let _ = send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize]).await;
         transaction_id += 1;
         let dt = start.elapsed().as_micros() as u32;
@@ -136,9 +138,23 @@ async fn run_endpoint(
                 writer.write_all(&dt.to_ne_bytes()).unwrap();
             }
             None => {}
+=======
+        if let Ok(dt) =
+            send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize], start.clone()).await
+        {
+            transaction_id += 1;
+
+            stat_buff.push(dt);
+>>>>>>> fefabfa (fixed: tps logging)
         }
     }
 
+    if let Some(writer) = file_b.as_mut() {
+        for val in &stat_buff {
+            writer.write_all(&val.to_ne_bytes()).unwrap();
+        }
+        writer.flush().unwrap();
+    }
     // When the connection is closed all the streams that haven't been delivered yet will be lost.
     // Sleep to give it some time to deliver all the pending streams.
     sleep(Duration::from_secs(1)).await;

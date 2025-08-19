@@ -4,6 +4,7 @@ use quinn::{
     ClientConfig, Connection, Endpoint, IdleTimeout, TransportConfig,
 };
 use solana_sdk::signature::Keypair;
+use tokio::time::Instant;
 
 use {
     crate::error::QuicClientError,
@@ -171,11 +172,14 @@ pub fn create_client_endpoint(
 pub async fn send_data_over_stream(
     connection: &Connection,
     data: &[u8],
-) -> Result<(), QuicClientError> {
+    start: std::time::Instant,
+) -> Result<u32, QuicClientError> {
     let mut send_stream = connection.open_uni().await?;
 
     send_stream.write_all(data).await?;
     //never do this
-    //send_stream.finish().await?;
-    Ok(())
+    let _ = send_stream.finish();
+    let dt = start.elapsed().as_micros() as u32;
+
+    Ok(dt)
 }
