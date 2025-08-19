@@ -1,7 +1,8 @@
 //! This example demonstrates quic server for handling incoming transactions.
 //!
 //! Checkout the `README.md` for guidance.
-use shared::stats_collection::{StatsCollection, StatsSample};
+use shared::stats_collection::{file_bin, StatsCollection, StatsSample};
+use std::io::Write;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use {
     chrono::Utc,
@@ -182,10 +183,17 @@ impl Stats {
 
 #[tokio::main]
 async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
+    let (sender, receiver) = channel::<u32>();
+    std::thread::spawn(move || {
+        let mut file = file_bin("Server".into()).unwrap();
+
+        while let Ok(timestamp) = receiver.recv() {
+            file.write_all(&timestamp.to_ne_bytes()).unwrap();
+        }
+    });
+
     let token = CancellationToken::new();
-    let start = Instant::now();
     let stats = Arc::new(Stats::default());
-    let (sender, receiver): (Sender<u32>, Receiver<u32>) = channel();
     // Spawn a task that listens for SIGINT (Ctrl+C)
     let handler = tokio::spawn({
         let token = token.clone();
@@ -219,7 +227,7 @@ async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
     info!("listening on {}", endpoint.local_addr()?);
 
     run_report_stats_service(stats.clone(), token.clone()).await;
-
+    let start: Instant = Instant::now();
     loop {
         tokio::select! {
             _ = token.cancelled() => {
@@ -259,7 +267,7 @@ async fn run(options: ServerCliParameters) -> Result<(), QuicServerError> {
     }
 
     let _ = handler.await;
-    println!("{:?}", receiver.recv().unwrap());
+
     Ok(())
 }
 

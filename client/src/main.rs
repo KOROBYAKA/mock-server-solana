@@ -129,23 +129,13 @@ async fn run_endpoint(
         }
 
         generate_dummy_data(&mut tx_buffer, transaction_id, timestamp(), tx_size);
-<<<<<<< HEAD
-        let _ = send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize]).await;
-        transaction_id += 1;
-        let dt = start.elapsed().as_micros() as u32;
-        match file_b.as_mut() {
-            Some(writer) => {
-                writer.write_all(&dt.to_ne_bytes()).unwrap();
-            }
-            None => {}
-=======
+
         if let Ok(dt) =
             send_data_over_stream(&connection, &tx_buffer[0..tx_size as usize], start.clone()).await
         {
             transaction_id += 1;
 
             stat_buff.push(dt);
->>>>>>> fefabfa (fixed: tps logging)
         }
     }
 
