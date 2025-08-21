@@ -29,7 +29,7 @@ impl StatsCollection {
     }
 
     pub fn write_csv(&self, host: String) {
-        let file_name = format!("{}-host.csv", host);
+        let file_name = format!("{}-host-netstats.csv", host);
         let mut path = std::path::PathBuf::from("results");
         path.push(file_name);
         let file = std::fs::File::create(path).unwrap();
@@ -56,8 +56,10 @@ impl IntoIterator for StatsCollection {
 }
 
 pub fn file_bin(host: String) -> Option<std::io::BufWriter<std::fs::File>> {
-    let file_name = format!("{}-host_transactions.bin", host);
-    let file = std::fs::File::create(file_name).unwrap();
+    let file_name = format!("{}-host-transactions.bin", host);
+    let mut path = std::path::PathBuf::from("results");
+    path.push(file_name);
+    let file = std::fs::File::create(path).unwrap();
     let file = std::io::BufWriter::with_capacity(10 * 1024, file);
     Some(file)
 }
